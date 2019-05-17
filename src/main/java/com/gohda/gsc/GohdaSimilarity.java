@@ -16,6 +16,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.BasicStats;
 import org.apache.lucene.search.similarities.Similarity;
@@ -138,8 +139,8 @@ public class GohdaSimilarity extends Similarity{
 	   * @param docLen the document length.
 	   * @return the score.
 	   */
-	  protected float score(BasicStats stats, float freq, float docLen,String f) {
-		  log.info("score------------------------------stats="+JSONObject.fromObject(stats)+" freq="+freq + " docLen="+docLen + " f="+f);
+	  protected float score(BasicStats stats, float freq, float docLen,String f,List<Weight> weights) {
+		  log.info("score------------------------------stats="+JSONObject.fromObject(stats)+" freq="+freq + " docLen="+docLen + " f="+f + " weights="+JSONArray.fromObject(weights));
 		  return 1f;
 	  }
 	  
@@ -175,12 +176,12 @@ public class GohdaSimilarity extends Similarity{
 	   * @return the explanation.
 	   */
 	  protected Explanation explain(
-	      BasicStats stats, int doc, Explanation freq, float docLen,String f) {
+	      BasicStats stats, int doc, Explanation freq, float docLen,String f,List<Weight> weights) {
 	    List<Explanation> subs = new ArrayList<Explanation>();
 	    explain(subs, stats, doc, freq.getValue(), docLen);
 	    
 	    return Explanation.match(
-	        score(stats, freq.getValue(), docLen,f),
+	        score(stats, freq.getValue(), docLen,f,weights),
 	        "score(" + getClass().getSimpleName() + ", doc=" + doc + ", freq=" + freq.getValue() +"), computed from:",
 	        subs);
 	  }
@@ -276,7 +277,8 @@ public class GohdaSimilarity extends Similarity{
 	   * {@link SimilarityBase#explain(BasicStats, int, Explanation, float)},
 	   * respectively.
 	   */
-	  final class BasicSimScorer extends SimScorer {
+	  public final class BasicSimScorer extends SimScorer {
+		  private ArrayList<Weight> weights = new ArrayList<>();
 	    private final BasicStats stats;
 	    private final NumericDocValues norms;
 	    private final SortedDocValues docValues;
@@ -313,12 +315,12 @@ public class GohdaSimilarity extends Similarity{
 	    @Override
 	    public float score(int doc, float freq) throws IOException {
 	      // We have to supply something in case norms are omitted
-	      return GohdaSimilarity.this.score(stats, freq, getLengthValue(doc),getQueryValue(doc));
+	      return GohdaSimilarity.this.score(stats, freq, getLengthValue(doc),getQueryValue(doc),this.weights);
 	    }
 
 	    @Override
 	    public Explanation explain(int doc, Explanation freq) throws IOException {
-	      return GohdaSimilarity.this.explain(stats, doc, freq, getLengthValue(doc),getQueryValue(doc));
+	      return GohdaSimilarity.this.explain(stats, doc, freq, getLengthValue(doc),getQueryValue(doc),this.weights);
 	    }
 
 	    @Override
@@ -330,9 +332,13 @@ public class GohdaSimilarity extends Similarity{
 	    public float computePayloadFactor(int doc, int start, int end, BytesRef payload) {
 	      return 1f;
 	    }
+	    public void setWeights(ArrayList<Weight> weights) {
+			this.weights = weights;
+		}
 	  }
 	  
-	  static class MultiSimScorer extends SimScorer {
+	  public static final class MultiSimScorer extends SimScorer {
+		    private ArrayList<Weight> weights = new ArrayList<>();
 		    private final SimScorer subScorers[];
 		    
 		    MultiSimScorer(SimScorer subScorers[]) {
@@ -366,6 +372,12 @@ public class GohdaSimilarity extends Similarity{
 		    public float computePayloadFactor(int doc, int start, int end, BytesRef payload) {
 		      return subScorers[0].computePayloadFactor(doc, start, end, payload);
 		    }
+
+			public void setWeights(ArrayList<Weight> weights) {
+				this.weights = weights;
+			}
+		    
+		    
 		  }
 
 		  static class MultiStats extends SimWeight {
@@ -375,5 +387,6 @@ public class GohdaSimilarity extends Similarity{
 		      this.subStats = subStats;
 		    }
 		  }
+		  
 	
 }

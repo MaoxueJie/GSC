@@ -32,6 +32,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.GohdaBulkScorer;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Matches;
@@ -192,6 +193,7 @@ final class GohdaBooleanWeight extends Weight {
   // or null if it is not applicable
   // pkg-private for forcing use of BooleanScorer in tests
   BulkScorer optionalBulkScorer(LeafReaderContext context) throws IOException {
+	
     List<BulkScorer> optional = new ArrayList<BulkScorer>();
     Iterator<BooleanClause> cIter = query.iterator();
     for (Weight w  : weights) {
@@ -325,14 +327,15 @@ final class GohdaBooleanWeight extends Weight {
 
   @Override
   public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    final BulkScorer bulkScorer = booleanScorer(context);
-    if (bulkScorer != null) {
+    BulkScorer bulkScorer = booleanScorer(context);
+    if (bulkScorer == null) {
       // bulk scoring is applicable, use it
-      return bulkScorer;
-    } else {
-      // use a Scorer-based impl (BS2)
-      return super.bulkScorer(context);
-    }
+      bulkScorer = super.bulkScorer(context);;
+    } 
+    if (bulkScorer==null)
+    	return null;
+    final GohdaBulkScorer gohdaBulkScorer = new GohdaBulkScorer(bulkScorer,this.weights);
+    return gohdaBulkScorer;
   }
 
   @Override
