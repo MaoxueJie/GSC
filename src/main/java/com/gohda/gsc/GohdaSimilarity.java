@@ -75,24 +75,24 @@ public class GohdaSimilarity extends Similarity{
 	  @Override
 	  public final SimWeight computeWeight(float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
 		  
-		log.info("computeWeight------------------------------termStats="+JSONArray.fromObject(termStats)+" collectionStats="+JSONObject.fromObject(collectionStats) + " boost="+boost);  
+		//log.info("computeWeight------------------------------termStats="+JSONArray.fromObject(termStats)+" collectionStats="+JSONObject.fromObject(collectionStats) + " boost="+boost);  
 		  
-	    BasicStats stats[] = new BasicStats[termStats.length];
+		  GohdaBasicStats stats[] = new GohdaBasicStats[termStats.length];
 	    for (int i = 0; i < termStats.length; i++) {
-	      stats[i] = newStats(collectionStats.field(), boost);
+	      stats[i] = newStats(collectionStats.field(), boost,termStats[i].term().utf8ToString());
 	      fillBasicStats(stats[i], collectionStats, termStats[i]);
 	    }
 	    return stats.length == 1 ? stats[0] : new MultiStats(stats);
 	  }
 	  
 	  /** Factory method to return a custom stats object */
-	  protected BasicStats newStats(String field, float boost) {
-	    return new BasicStats(field, boost);
+	  protected GohdaBasicStats newStats(String field, float boost,String val) {
+	    return new GohdaBasicStats(field, boost,val);
 	  }
 	  
 	  /** Fills all member fields defined in {@code BasicStats} in {@code stats}. 
 	   *  Subclasses can override this method to fill additional stats. */
-	  protected void fillBasicStats(BasicStats stats, CollectionStatistics collectionStats, TermStatistics termStats) {
+	  protected void fillBasicStats(GohdaBasicStats stats, CollectionStatistics collectionStats, TermStatistics termStats) {
 	    // #positions(field) must be >= #positions(term)
 	    assert collectionStats.sumTotalTermFreq() == -1 || collectionStats.sumTotalTermFreq() >= termStats.totalTermFreq();
 	    long numberOfDocuments = collectionStats.docCount() == -1 ? collectionStats.maxDoc() : collectionStats.docCount();
@@ -139,8 +139,8 @@ public class GohdaSimilarity extends Similarity{
 	   * @param docLen the document length.
 	   * @return the score.
 	   */
-	  protected float score(BasicStats stats, float freq, float docLen,String f,List<Weight> weights) {
-		  log.info("score------------------------------stats="+JSONObject.fromObject(stats)+" freq="+freq + " docLen="+docLen + " f="+f + " weights="+JSONArray.fromObject(weights));
+	  protected float score(GohdaBasicStats stats, float freq, float docLen,int doc,String f,List<Weight> weights) {
+		  log.info("score------------------------------stats="+JSONObject.fromObject(stats)+" freq="+freq + "doc="+doc+" docLen="+docLen + " f="+f + " weights="+JSONArray.fromObject(weights));
 		  return 1f;
 	  }
 	  
@@ -158,7 +158,7 @@ public class GohdaSimilarity extends Similarity{
 	   * @param docLen the document length.
 	   */
 	  protected void explain(
-	      List<Explanation> subExpls, BasicStats stats, int doc, float freq, float docLen) {}
+	      List<Explanation> subExpls, GohdaBasicStats stats, int doc, float freq, float docLen) {}
 	  
 	  /**
 	   * Explains the score. The implementation here provides a basic explanation
@@ -176,12 +176,12 @@ public class GohdaSimilarity extends Similarity{
 	   * @return the explanation.
 	   */
 	  protected Explanation explain(
-	      BasicStats stats, int doc, Explanation freq, float docLen,String f,List<Weight> weights) {
+			  GohdaBasicStats stats, int doc, Explanation freq, float docLen,String f,List<Weight> weights) {
 	    List<Explanation> subs = new ArrayList<Explanation>();
 	    explain(subs, stats, doc, freq.getValue(), docLen);
 	    
 	    return Explanation.match(
-	        score(stats, freq.getValue(), docLen,f,weights),
+	        score(stats, freq.getValue(), docLen,doc,f,weights),
 	        "score(" + getClass().getSimpleName() + ", doc=" + doc + ", freq=" + freq.getValue() +"), computed from:",
 	        subs);
 	  }
@@ -196,18 +196,18 @@ public class GohdaSimilarity extends Similarity{
 		      SimWeight subStats[] = ((MultiStats) stats).subStats;
 		      SimScorer subScorers[] = new SimScorer[subStats.length];
 		      for (int i = 0; i < subScorers.length; i++) {
-		        BasicStats basicstats = (BasicStats) subStats[i];
-		        Field f = BasicStats.class.getDeclaredField("field");
+		    	  GohdaBasicStats basicstats = (GohdaBasicStats) subStats[i];
+		        Field f = GohdaBasicStats.class.getDeclaredField("field");
 			    f.setAccessible(true);
 		        subScorers[i] = new BasicSimScorer(basicstats, indexCreatedVersionMajor, context.reader().getNormValues((String)f.get(basicstats)),context.reader().getSortedDocValues((String)f.get(basicstats)+"_str"));
 		      }
 		      return new MultiSimScorer(subScorers);
 		    } else {
-		      BasicStats basicstats = (BasicStats) stats;
+		     GohdaBasicStats basicstats = (GohdaBasicStats) stats;
 		      
-		      Field f = BasicStats.class.getDeclaredField("field");
+		      Field f = GohdaBasicStats.class.getDeclaredField("field");
 		      f.setAccessible(true);
-		      log.info("Field------------------------------field="+f.get(basicstats) + " normValues="+JSONObject.fromObject(context.reader().getNormValues((String)f.get(basicstats))) );
+		      //log.info("Field------------------------------field="+f.get(basicstats) + " normValues="+JSONObject.fromObject(context.reader().getNormValues((String)f.get(basicstats))) );
 		      return new BasicSimScorer(basicstats, indexCreatedVersionMajor, context.reader().getNormValues((String)f.get(basicstats)),context.reader().getSortedDocValues((String)f.get(basicstats)+"_str"));
 		    }
 	    }catch(Exception e)
@@ -247,7 +247,7 @@ public class GohdaSimilarity extends Similarity{
 	  /** Encodes the document length in the same way as {@link BM25Similarity}. */
 	  @Override
 	  public final long computeNorm(FieldInvertState state) {
-		  log.info("computeNorm------------------------------state="+JSONObject.fromObject(state));
+		log.info("computeNorm------------------------------state="+JSONObject.fromObject(state));
 	    final int numTerms;
 	    if (discountOverlaps)
 	      numTerms = state.getLength() - state.getNumOverlap();
@@ -279,12 +279,12 @@ public class GohdaSimilarity extends Similarity{
 	   */
 	  public final class BasicSimScorer extends SimScorer {
 		  private ArrayList<Weight> weights = new ArrayList<>();
-	    private final BasicStats stats;
+	    private final GohdaBasicStats stats;
 	    private final NumericDocValues norms;
 	    private final SortedDocValues docValues;
 	    private final float[] normCache;
 	    
-	    BasicSimScorer(BasicStats stats, int indexCreatedVersionMajor, NumericDocValues norms,SortedDocValues docValues) throws IOException {
+	    BasicSimScorer(GohdaBasicStats stats, int indexCreatedVersionMajor, NumericDocValues norms,SortedDocValues docValues) throws IOException {
 	      this.stats = stats;
 	      this.norms = norms;
 	      this.docValues = docValues;
@@ -315,7 +315,7 @@ public class GohdaSimilarity extends Similarity{
 	    @Override
 	    public float score(int doc, float freq) throws IOException {
 	      // We have to supply something in case norms are omitted
-	      return GohdaSimilarity.this.score(stats, freq, getLengthValue(doc),getQueryValue(doc),this.weights);
+	      return GohdaSimilarity.this.score(stats, freq, getLengthValue(doc),doc,getQueryValue(doc),this.weights);
 	    }
 
 	    @Override

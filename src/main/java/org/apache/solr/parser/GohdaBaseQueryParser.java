@@ -11,6 +11,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.solr.schema.FieldType;
 import org.apache.solr.search.QParser;
 
@@ -48,6 +49,10 @@ public class GohdaBaseQueryParser extends QueryParser{
               normal = QueryUtils.build(booleanBuilder, parser);
             }
           }
+        }else if (q instanceof TermQuery) {
+        	 GohdaBooleanQuery.Builder booleanBuilder = newGohdaBooleanQuery();
+             booleanBuilder.add(q, BooleanClause.Occur.SHOULD);
+             normal = QueryUtils.build(booleanBuilder, parser);
         }
         return normal;
     }

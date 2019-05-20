@@ -41,6 +41,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 
 /** A Query that matches documents matching boolean combinations of other
@@ -225,22 +226,25 @@ public class GohdaBooleanQuery extends Query implements Iterable<BooleanClause> 
     if (clauses.size() == 1) {
       BooleanClause c = clauses.get(0);
       Query query = c.getQuery();
-      if (minimumNumberShouldMatch == 1 && c.getOccur() == Occur.SHOULD) {
-        return query;
-      } else if (minimumNumberShouldMatch == 0) {
-        switch (c.getOccur()) {
-          case SHOULD:
-          case MUST:
-            return query;
-          case FILTER:
-            // no scoring clauses, so return a score of 0
-            return new BoostQuery(new ConstantScoreQuery(query), 0);
-          case MUST_NOT:
-            // no positive clauses
-            return new MatchNoDocsQuery("pure negative BooleanQuery");
-          default:
-            throw new AssertionError();
-        }
+      if (!(query instanceof TermQuery))
+      {
+	      if (minimumNumberShouldMatch == 1 && c.getOccur() == Occur.SHOULD) {
+	        return query;
+	      } else if (minimumNumberShouldMatch == 0) {
+	        switch (c.getOccur()) {
+	          case SHOULD:
+	          case MUST:
+	            return query;
+	          case FILTER:
+	            // no scoring clauses, so return a score of 0
+	            return new BoostQuery(new ConstantScoreQuery(query), 0);
+	          case MUST_NOT:
+	            // no positive clauses
+	            return new MatchNoDocsQuery("pure negative BooleanQuery");
+	          default:
+	            throw new AssertionError();
+	        }
+	      }
       }
     }
 

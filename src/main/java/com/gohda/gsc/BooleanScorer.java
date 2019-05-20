@@ -33,7 +33,7 @@ import org.apache.lucene.util.PriorityQueue;
  * that have low values of {@link BooleanQuery.Builder#setMinimumNumberShouldMatch(int)}
  * and dense clauses. This scorer scores documents by batches of 2048 docs.
  */
-final class BooleanScorer extends BulkScorer {
+public final class BooleanScorer extends BulkScorer {
 
   static final int SHIFT = 11;
   static final int SIZE = 1 << SHIFT;
@@ -46,8 +46,8 @@ final class BooleanScorer extends BulkScorer {
     int freq;
   }
 
-  private class BulkScorerAndDoc {
-    final BulkScorer scorer;
+  public class BulkScorerAndDoc {
+    public final BulkScorer scorer;
     final long cost;
     int next;
 
@@ -84,7 +84,7 @@ final class BooleanScorer extends BulkScorer {
     return cost;
   }
 
-  static final class HeadPriorityQueue extends PriorityQueue<BulkScorerAndDoc> {
+  public static final class HeadPriorityQueue extends PriorityQueue<BulkScorerAndDoc> {
 
     public HeadPriorityQueue(int maxSize) {
       super(maxSize);
@@ -120,7 +120,7 @@ final class BooleanScorer extends BulkScorer {
   final long[] matching = new long[SET_SIZE];
 
   final BulkScorerAndDoc[] leads;
-  final HeadPriorityQueue head;
+  public final HeadPriorityQueue head;
   final TailPriorityQueue tail;
   final FakeScorer fakeScorer = new FakeScorer();
   final int minShouldMatch;
