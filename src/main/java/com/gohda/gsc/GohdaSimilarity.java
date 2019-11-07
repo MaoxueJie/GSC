@@ -13,8 +13,10 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -140,8 +142,34 @@ public class GohdaSimilarity extends Similarity{
 	   * @return the score.
 	   */
 	  protected float score(GohdaBasicStats stats, float freq, float docLen,int doc,String f,List<Weight> weights) {
-		  log.info("score------------------------------stats="+JSONObject.fromObject(stats)+" freq="+freq + "doc="+doc+" docLen="+docLen + " f="+f + " weights="+JSONArray.fromObject(weights));
-		  return 1f;
+		  //log.info("score------------------------------stats="+JSONObject.fromObject(stats)+" freq="+freq + "doc="+doc+" docLen="+docLen + " f="+f + " weights="+JSONArray.fromObject(weights));
+		  float hitCount = 0;
+		  float unhitCount = 0;
+		  String preTerm = ""; 
+		  boolean preLock = true;
+		  for(BooleanClause c : stats.getQuery())
+		  {
+			  String term = ((TermQuery)(c.getQuery())).getTerm().text();
+			  if (f.toLowerCase().indexOf(term.toLowerCase())>-1)
+			  {
+				  hitCount ++;
+			  }else
+			  {
+				  unhitCount ++;
+			  }
+			  if (preLock)
+			  {
+				  if (stats.getValue().toLowerCase().equalsIgnoreCase(term)) {
+					  preLock = false;
+					  continue;
+				  }
+				  preTerm = term;
+			  }
+		  }
+		  
+		  //log.info(f.toLowerCase() + ":"+preTerm + "  " + stats.getValue() + ":" + hitCount + ":" + unhitCount);
+		  //log.info((8f + 2f*(f.toLowerCase().indexOf((preTerm+stats.getValue()).toLowerCase())>-1?1:0))/hitCount - (8f*(unhitCount/(hitCount+unhitCount)))/hitCount);
+		  return ((hitCount+1)/(unhitCount+1))/hitCount;//(8f + 2f*(f.toLowerCase().indexOf((preTerm+stats.getValue()).toLowerCase())>-1?1:0));//(8f + 2f*(f.toLowerCase().indexOf((preTerm+stats.getValue()).toLowerCase())>-1?1:0))/hitCount - (8f*(unhitCount/(hitCount+unhitCount)))/hitCount;
 	  }
 	  
 	  /**
@@ -199,16 +227,28 @@ public class GohdaSimilarity extends Similarity{
 		    	  GohdaBasicStats basicstats = (GohdaBasicStats) subStats[i];
 		        Field f = GohdaBasicStats.class.getDeclaredField("field");
 			    f.setAccessible(true);
-		        subScorers[i] = new BasicSimScorer(basicstats, indexCreatedVersionMajor, context.reader().getNormValues((String)f.get(basicstats)),context.reader().getSortedDocValues((String)f.get(basicstats)+"_str"));
+		        //subScorers[i] = new BasicSimScorer(basicstats, indexCreatedVersionMajor, context.reader().getNormValues((String)f.get(basicstats)),context.reader().getSortedDocValues((String)f.get(basicstats)+"_str"));
+			    
+			    String fieldName = basicstats.getField();//(String)f.get(basicstats);
+		        if (fieldName.endsWith("_query"))
+		        {
+		     	  fieldName = fieldName.replace("_query", "");
+		        }
+		        subScorers[i] = new BasicSimScorer(basicstats, indexCreatedVersionMajor, context.reader().getNormValues((String)f.get(basicstats)),context.reader().getSortedDocValues((String)f.get(basicstats)));
 		      }
 		      return new MultiSimScorer(subScorers);
 		    } else {
-		     GohdaBasicStats basicstats = (GohdaBasicStats) stats;
+		      GohdaBasicStats basicstats = (GohdaBasicStats) stats;
 		      
 		      Field f = GohdaBasicStats.class.getDeclaredField("field");
 		      f.setAccessible(true);
-		      //log.info("Field------------------------------field="+f.get(basicstats) + " normValues="+JSONObject.fromObject(context.reader().getNormValues((String)f.get(basicstats))) );
-		      return new BasicSimScorer(basicstats, indexCreatedVersionMajor, context.reader().getNormValues((String)f.get(basicstats)),context.reader().getSortedDocValues((String)f.get(basicstats)+"_str"));
+		     
+		      String fieldName = basicstats.getField();//(String)f.get(basicstats);
+		      if (fieldName.endsWith("_query"))
+		      {
+		    	  fieldName = fieldName.replace("_query", "");
+		      }
+		      return new BasicSimScorer(basicstats, indexCreatedVersionMajor, context.reader().getNormValues((String)f.get(basicstats)),context.reader().getSortedDocValues(fieldName));
 		    }
 	    }catch(Exception e)
 	    {
@@ -247,7 +287,7 @@ public class GohdaSimilarity extends Similarity{
 	  /** Encodes the document length in the same way as {@link BM25Similarity}. */
 	  @Override
 	  public final long computeNorm(FieldInvertState state) {
-		log.info("computeNorm------------------------------state="+JSONObject.fromObject(state));
+		//log.info("computeNorm------------------------------state="+JSONObject.fromObject(state));
 	    final int numTerms;
 	    if (discountOverlaps)
 	      numTerms = state.getLength() - state.getNumOverlap();

@@ -502,6 +502,10 @@ public class GohdaBooleanQuery extends Query implements Iterable<BooleanClause> 
 
     return buffer.toString();
   }
+  
+  public int getClausesSzie() {
+	  return clauses.size();
+  }
 
   /**
    * Compares the specified object with this boolean query for equality.

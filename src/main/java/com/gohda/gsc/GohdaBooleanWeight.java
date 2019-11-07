@@ -18,6 +18,7 @@ package com.gohda.gsc;
 
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -39,6 +40,7 @@ import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesUtils;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.Bits;
@@ -63,6 +65,22 @@ final class GohdaBooleanWeight extends Weight {
     weights = new ArrayList<>();
     for (BooleanClause c : query) {
       Weight w = searcher.createWeight(c.getQuery(), needsScores && c.isScoring(), boost);
+      try {
+    	  Field field = w.getClass().getDeclaredField("stats");
+    	  if (field!=null) {
+    		  field.setAccessible(true);
+    		  Similarity.SimWeight simweight = (Similarity.SimWeight)field.get(w);
+    		  if (simweight instanceof GohdaBasicStats)
+    		  {
+    			  ((GohdaBasicStats)simweight).setQuery(query);
+    		  }
+    		  field.setAccessible(false);
+    	  }
+    		  
+      }catch(Exception e)
+      {
+    	  
+      }
       weights.add(w);
     }
   }

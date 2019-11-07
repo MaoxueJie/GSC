@@ -1,6 +1,7 @@
 package com.gohda.gsc;
 
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.Similarity;
 
 public class GohdaBasicStats extends Similarity.SimWeight {
@@ -17,6 +18,8 @@ public class GohdaBasicStats extends Similarity.SimWeight {
 	  protected long totalTermFreq;
 	  
 	  final String value;
+	  
+	  protected GohdaBooleanQuery query;
 	  
 	  // -------------------------- Boost-related stuff --------------------------
 
@@ -93,9 +96,20 @@ public class GohdaBasicStats extends Similarity.SimWeight {
 	    return boost;
 	  }
 
-	public String getValue() {
+	  public String getValue() {
 		return value;
-	}
-	  
+	  }
+	
+	  public GohdaBooleanQuery getQuery() {
+		return query;
+	  }
+
+	  public void setQuery(GohdaBooleanQuery query) {
+		this.query = query;
+	  }
+
+	  public String getField() {
+		return field;
+	  }
 	  
 	}
